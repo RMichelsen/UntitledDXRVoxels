@@ -105,14 +105,14 @@ Vertex GetCurrentVertex()
 void MainGen()
 {
 	// Quick "crosshair"
-	float2 xy = DispatchRaysIndex().xy + 0.5f; // center in the middle of the pixel.
-	float2 screenPos = xy / DispatchRaysDimensions().xy * 2.0 - 1.0;
-	screenPos.y = -screenPos.y;
-	if (distance(screenPos, float2(0, 0)) < 0.0075)
-	{
-		l_Output[DispatchRaysIndex().xy] = float4(1.0, 1.0, 0.0, 0.0);
-		return;
-	}
+	//float2 xy = DispatchRaysIndex().xy + 0.5f; // center in the middle of the pixel.
+	//float2 screenPos = xy / DispatchRaysDimensions().xy * 2.0 - 1.0;
+	//screenPos.y = -screenPos.y;
+	//if (distance(screenPos, float2(0, 0)) < 0.0075)
+	//{
+	//	l_Output[DispatchRaysIndex().xy] = float4(1.0, 1.0, 0.0, 0.0);
+	//	return;
+	//}
 
 	MainHitInfo payload;
 
@@ -163,23 +163,28 @@ void MainHit(inout MainHitInfo payload, Attributes attrib)
 	
 	uint randSeed = initRand(launchIndex.x + launchIndex.y * launchDim.x, g_Constants.framecount, 16);
 
-	float3 dir = getCosHemisphereSample(randSeed, N, NT, NB);
-	ShadowHitInfo shadowPayload;
-	shadowPayload.visibility = 0.0f;
-	RayDesc ray;
-	ray.Origin = HitWorldPosition() + (N * 0.05);
-	ray.Direction = dir;
-	ray.TMin = 0;
-	ray.TMax = 10000;
-	TraceRay(g_SceneBVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 0xFF, 1, 0, 1, ray, shadowPayload);
-
-	float4 nvGreen = float4(0.995, 0.6, 0.385, 1.0);
-	payload.color = nvGreen * 0.5 + shadowPayload.visibility;
-
-	if (asuint(vertex.position.w) == l_PickBuffer[0])
+	float ao = 0.0;
+	for (int i = 0; i < 8; i++)
 	{
-		payload.color += (float4(0.995, 0.6, 0.385, 1.0) * 0.5);
+		float3 dir = getCosHemisphereSample(randSeed, N, NT, NB);
+		ShadowHitInfo shadowPayload;
+		shadowPayload.visibility = 0.0f;
+		RayDesc ray;
+		ray.Origin = HitWorldPosition() + (N * 0.05);
+		ray.Direction = dir;
+		ray.TMin = 0;
+		ray.TMax = 10000;
+		TraceRay(g_SceneBVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 0xFF, 1, 0, 1, ray, shadowPayload);
+		ao += shadowPayload.visibility;
 	}
+
+	ao /= 8.0;
+	payload.color = ao;
+
+	//if (asuint(vertex.position.w) == l_PickBuffer[0])
+	//{
+	//	payload.color += (float4(0.995, 0.6, 0.385, 1.0) * 0.5);
+	//}
 }
 
 [shader("miss")]
